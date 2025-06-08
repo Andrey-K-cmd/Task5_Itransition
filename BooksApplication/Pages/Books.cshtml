@@ -1,0 +1,132 @@
+@page
+@model BooksApplication.Pages.BooksModel
+@{
+    ViewData["Title"] = "Books";
+}
+
+<div class="container mt-4">
+    <form method="get" class="row g-3 align-items-center mb-4">
+        <div class="col-auto">
+            <label class="form-label">Language</label>
+            <select name="Locale" class="form-select" onchange="this.form.submit()">
+                <option value="ja" selected="@("ja" == Model.Locale)">日本語, Japane</option>
+                <option value="fr" selected="@("fr" == Model.Locale)">Français, France</option>
+                <option value="de" selected="@("de" == Model.Locale)">Deutsch, Germany</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Seed</label>
+            <input type="number" name="Seed" class="form-control" value="@Model.Seed" onchange="this.form.submit()" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label">
+                Likes: <span id="likes-value">@Model.Likes</span>
+            </label>
+            <input type="range" name="Likes" class="form-range" min="0" max="10" step="0.1"
+                value="@Model.Likes"
+                oninput="document.getElementById('likes-value').innerText = this.value"
+                onchange="this.form.submit()" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Review</label>
+            <input type="number" name="Review" class="form-control" step="0.1" value="@Model.Review.ToString(System.Globalization.CultureInfo.InvariantCulture)" onchange="this.form.submit()" />
+        </div>
+    </form>
+
+    <table class="table" id="book-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>ISBN</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Publisher</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var book in Model.Books)
+        {
+            <tr>
+                <td>@book.Index</td>
+                <td>@book.ISBN</td>
+                <td>@book.Title</td>
+                <td>@book.Author</td>
+                <td>@book.Publisher</td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Details
+                        </button>
+                        <div class="dropdown-menu p-3" style="min-width: 300px;">
+                            <img src="@book.Cover" alt="Cover" class="img-fluid mb-2" />
+                            <p><strong>Description:</strong> @book.Description</p>
+                            <p><strong>Reviews:</strong><br />@Html.Raw(book.Reviews.Replace("\n", "<br />"))</p>
+                            <p><strong>Likes:</strong> @book.Likes</p>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+    </table>
+
+    <div id="loader" class="alert alert-info text-center" style="display:none">
+        Uploading more books...
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let page = 1;
+        const table = document.getElementById("book-table").querySelector("tbody");
+
+        window.addEventListener("scroll", async () => {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+                await uploadMore();
+            }
+        });
+
+        let isUploaded = false;
+        async function uploadMore() {
+            if (isUploaded) return;
+
+            isUploaded = true;
+            document.getElementById("loader").style.display = "block";
+
+            const uri = `${window.location.pathname}?handler=LoadMore&page=${page}&${window.location.search.slice(1)}`;
+            const response = await fetch(uri);
+            const books = await response.json();
+
+            for (const book of books) {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${book.index}</td>
+                    <td>${book.isbn}</td>
+                    <td>${book.title}</td>
+                    <td>${book.author}</td>
+                    <td>${book.publisher}</td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Details
+                            </button>
+                            <div class="dropdown-menu p-3" style="min-width: 300px;">
+                                <img src="${book.cover}" alt="Cover" class="img-fluid mb-2" />
+                                <p><strong>Description:</strong> ${book.description}</p>
+                                <p><strong>Reviews:</strong><br>${book.reviews.replaceAll('\n', '<br>')}</p>
+                                <p><strong>Likes:</strong> ${book.likes}</p>
+                            </div>
+                        </div>
+                    </td>`;
+                table.appendChild(row);
+            }
+
+            page++;
+            isUploaded = false;
+            document.getElementById("loader").style.display = "none";
+        }
+    </script>
+}
+
+
